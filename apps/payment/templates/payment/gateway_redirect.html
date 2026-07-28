@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <title>در حال انتقال به درگاه پرداخت...</title>
+</head>
+<body onload="document.forms[0].submit()">
+    <p>در حال انتقال به درگاه پرداخت، لطفاً صبر کنید...</p>
+    <form method="post" action="{{ action_url }}">
+        {% for name, value in fields.items %}
+            <input type="hidden" name="{{ name }}" value="{{ value }}">
+        {% endfor %}
+        <noscript>
+            <button type="submit">ادامه</button>
+        </noscript>
+    </form>
+</body>
+</html>
