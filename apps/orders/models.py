@@ -1,4 +1,4 @@
-import uuid
+import random
 from django.conf import settings
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -8,7 +8,7 @@ from apps.store.models import Product
 
 
 def generate_order_number():
-    return f'GLM-{uuid.uuid4().hex[:10].upper()}'
+    return str(random.randint(100000, 999999))
 
 
 class ShippingSettings(models.Model):
