@@ -315,7 +315,6 @@ OTP_MAX_VERIFY_ATTEMPTS = env.int('OTP_MAX_VERIFY_ATTEMPTS', default=5)  # حد�
 SMS_BACKEND = env('SMS_BACKEND', default='console')
 KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
 KAVENEGAR_OTP_TEMPLATE = env('KAVENEGAR_OTP_TEMPLATE', default='ghalamino-otp')
-KAVENEGAR_BASE_URL = env('KAVENEGAR_BASE_URL', default='https://api.kavenegar.com/v1')
 
 # تنظیمات مربوط به درگاه پرداخت
 # ---------------------------------------------------------------------------
