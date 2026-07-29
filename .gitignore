@@ -1,3 +1,8 @@
 /db.sqlite3
 /.idea/misc.xml
 .env
+__pycache__/
+*.py[cod]
+*.sqlite3
+staticfiles/
+media/
