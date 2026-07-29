@@ -34,7 +34,7 @@ class KavenegarSMSProvider(BaseSMSProvider):
     def __init__(self):
         self.api_key = settings.KAVENEGAR_API_KEY
         self.otp_template = settings.KAVENEGAR_OTP_TEMPLATE
-        self.base_url = f'{settings.KAVENEGAR_BASE_URL}/{self.api_key}/verify/lookup.json'
+        self.base_url = f'https://api.kavenegar.com/v1/{self.api_key}/verify/lookup.json'
 
     def send_otp(self, phone_number: str, code: str) -> bool:
         return self._send(phone_number, self.otp_template, code)
