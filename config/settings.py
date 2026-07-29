@@ -315,6 +315,12 @@ OTP_MAX_VERIFY_ATTEMPTS = env.int('OTP_MAX_VERIFY_ATTEMPTS', default=5)  # حد�
 SMS_BACKEND = env('SMS_BACKEND', default='console')
 KAVENEGAR_API_KEY = env('KAVENEGAR_API_KEY', default='')
 KAVENEGAR_OTP_TEMPLATE = env('KAVENEGAR_OTP_TEMPLATE', default='ghalamino-otp')
+# پیامک به مشتری پس از پرداخت موفق سفارش - token=نام گیرنده, token2=شماره سفارش
+KAVENEGAR_ORDER_PAID_CUSTOMER_TEMPLATE = env('KAVENEGAR_ORDER_PAID_CUSTOMER_TEMPLATE', default='order1')
+# پیامک به مدیر هم‌زمان با پرداخت موفق سفارش - token=شماره سفارش, token2=مبلغ سفارش
+KAVENEGAR_ORDER_PAID_ADMIN_TEMPLATE = env('KAVENEGAR_ORDER_PAID_ADMIN_TEMPLATE', default='managerqaem')
+# پیامک به مشتری پس از ثبت کد رهگیری پستی توسط ادمین - token=نام گیرنده, token2=کد رهگیری
+KAVENEGAR_ORDER_SHIPPED_TEMPLATE = env('KAVENEGAR_ORDER_SHIPPED_TEMPLATE', default='order2')
 
 # تنظیمات مربوط به درگاه پرداخت
 # ---------------------------------------------------------------------------

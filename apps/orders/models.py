@@ -100,6 +100,13 @@ class Order(models.Model):
     discount_total = models.PositiveIntegerField(_('مجموع تخفیف (تومان)'), default=0)
     total_amount = models.PositiveIntegerField(_('مبلغ نهایی قابل‌پرداخت (تومان)'), default=0)
     customer_note = models.TextField(_('یادداشت مشتری'), blank=True)
+    tracking_code = models.CharField(
+        _('کد رهگیری پستی'),
+        max_length=50,
+        blank=True,
+        help_text=_(
+            'پس از تحویل بسته به اداره پست، این کد توسط ادمین ثبت می‌شود و پیامک اطلاع‌رسانی به مشتری ارسال می‌گردد.'),
+    )
     created_at = models.DateTimeField(_('تاریخ ثبت'), auto_now_add=True)
     updated_at = models.DateTimeField(_('تاریخ بروزرسانی'), auto_now=True)
     paid_at = models.DateTimeField(_('تاریخ پرداخت'), null=True, blank=True)
@@ -152,3 +159,28 @@ class OrderItem(models.Model):
     @property
     def total_price(self):
         return self.unit_price * self.quantity
+
+
+class AdminNotificationPhone(models.Model):
+    phone_number = models.CharField(
+        _('شماره تلفن مدیر'),
+        max_length=11,
+        unique=True,
+        validators=[phone_regex],
+        help_text=_('شماره موبایل به‌صورت ۱۱ رقمی، مثلاً 09121234567'),
+    )
+    note = models.CharField(_('توضیح (اختیاری)'), max_length=100, blank=True)
+    is_active = models.BooleanField(
+        _('فعال'),
+        default=True,
+        help_text=_('در صورت غیرفعال بودن، پیامک اطلاع‌رسانی سفارش به این شماره ارسال نمی‌شود.'),
+    )
+    created_at = models.DateTimeField(_('تاریخ افزودن'), auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('شماره اطلاع‌رسانی مدیر')
+        verbose_name_plural = _('شماره‌های اطلاع‌رسانی مدیر')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.phone_number

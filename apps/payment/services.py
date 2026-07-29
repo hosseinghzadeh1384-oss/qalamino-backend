@@ -1,6 +1,7 @@
 from django.db import transaction
 from django.utils import timezone
 from apps.orders.models import Order
+from apps.orders.notifications import notify_order_paid
 from .gateways.base import PaymentGatewayError
 from .gateways.factory import PaymentGatewayFactory
 from .models import Payment, PaymentStatus
@@ -75,6 +76,7 @@ class PaymentService:
                 order.status = Order.Status.PAID
                 order.paid_at = timezone.now()
                 order.save(update_fields=["status", "paid_at", "updated_at"])
+                transaction.on_commit(lambda: notify_order_paid(order))
         else:
             payment.mark_as_failed()
             if order.status == Order.Status.PENDING_PAYMENT:

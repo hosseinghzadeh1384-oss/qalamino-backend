@@ -1,7 +1,9 @@
 from django.contrib import admin
+from django.db import transaction
 from django.shortcuts import redirect
 from django.urls import reverse
-from .models import Order, OrderItem, ShippingSettings, ShippingTariffRow
+from .models import AdminNotificationPhone, Order, OrderItem, ShippingSettings, ShippingTariffRow
+from .notifications import notify_order_shipped
 
 
 class OrderItemInline(admin.TabularInline):
@@ -12,11 +14,25 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('order_number', 'user', 'status', 'total_amount', 'created_at', 'paid_at')
+    list_display = ('order_number', 'user', 'status', 'total_amount', 'tracking_code', 'created_at', 'paid_at')
     list_filter = ('status',)
-    search_fields = ('order_number', 'user__phone_number', 'receiver_phone')
+    search_fields = ('order_number', 'user__phone_number', 'receiver_phone', 'tracking_code')
     readonly_fields = ('order_number', 'items_total', 'total_amount', 'created_at', 'updated_at', 'paid_at')
     inlines = [OrderItemInline]
+
+    def save_model(self, request, obj, form, change):
+        # پیامک اطلاع‌رسانیِ تحویل به پست فقط زمانی ارسال می‌شود که کد رهگیری برای اولین‌بار
+        # ثبت شود (تا ذخیره‌های بعدیِ فرم، دوباره پیامک تکراری نفرستند).
+        should_notify = False
+        if change and 'tracking_code' in form.changed_data and obj.tracking_code:
+            previous_tracking_code = Order.objects.filter(pk=obj.pk).values_list('tracking_code', flat=True).first()
+            if not previous_tracking_code:
+                should_notify = True
+
+        super().save_model(request, obj, form, change)
+
+        if should_notify:
+            transaction.on_commit(lambda: notify_order_shipped(obj))
 
 
 @admin.register(ShippingSettings)
@@ -43,3 +59,10 @@ class ShippingSettingsAdmin(admin.ModelAdmin):
 class ShippingTariffRowAdmin(admin.ModelAdmin):
     list_display = ('max_weight_grams', 'tehran_price', 'other_price')
     ordering = ('max_weight_grams',)
+
+
+@admin.register(AdminNotificationPhone)
+class AdminNotificationPhoneAdmin(admin.ModelAdmin):
+    list_display = ('phone_number', 'note', 'is_active', 'created_at')
+    list_filter = ('is_active',)
+    search_fields = ('phone_number', 'note')
