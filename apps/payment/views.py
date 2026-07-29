@@ -19,7 +19,22 @@ from .serializers import (
 )
 
 
-@extend_schema(tags=['Payment'], summary="ایجاد پرداخت جدید")
+@extend_schema(
+    tags=['Payment'],
+    summary="ایجاد پرداخت جدید",
+    request=PaymentCreateSerializer,
+    responses={
+        201: {
+            "type": "object",
+            "properties": {
+                "payment_id": {"type": "integer"},
+                "authority": {"type": "string"},
+                "payment_url": {"type": "string"},
+                "status": {"type": "string"},
+            }
+        }
+    }
+)
 class PaymentCreateAPIView(APIView):
     permission_classes = [IsAuthenticatedUser]
 
@@ -47,7 +62,21 @@ class PaymentCreateAPIView(APIView):
         )
 
 
-@extend_schema(tags=['Payment'], summary="برای verify دستی")
+@extend_schema(
+    tags=['Payment'],
+    summary="برای verify دستی",
+    request=PaymentVerifySerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "payment_id": {"type": "integer"},
+                "status": {"type": "string"},
+                "ref_id": {"type": "string"},
+            }
+        }
+    }
+)
 class PaymentVerifyAPIView(APIView):
     permission_classes = [IsAuthenticatedUser]
 
@@ -100,7 +129,7 @@ class GatewayRedirectView(View):
         )
 
 
-@extend_schema(tags=['Payment'])
+@extend_schema(tags=['Payment'], request=SizpayCallbackSerializer)
 class SizpayCallbackAPIView(APIView):
     permission_classes = [AllowAny]
 
@@ -132,7 +161,7 @@ class SizpayCallbackAPIView(APIView):
         return build_result_response(order_number, payment_status, ref_id=payment.ref_id)
 
 
-@extend_schema(tags=['Payment'])
+@extend_schema(tags=['Payment'], request=SepehrCallbackSerializer)
 class SepehrCallbackAPIView(APIView):
     """
     آدرس بازگشتی (callbackURL) که سپهر پس از پرداخت کاربر را به آن هدایت می‌کند.

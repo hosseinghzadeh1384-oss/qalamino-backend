@@ -5,7 +5,12 @@ from .models import ContactMessage
 from .serializers import ContactMessageCreateSerializer
 
 
-@extend_schema(tags=['Contact'], summary='ارسال پیام تماس با ما (درخواست / انتقاد / پیشنهاد)')
+@extend_schema(
+    tags=['Contact'],
+    summary='ارسال پیام تماس با ما (درخواست / انتقاد / پیشنهاد)',
+    request=ContactMessageCreateSerializer,
+    responses={201: ContactMessageCreateSerializer}
+)
 class ContactMessageCreateView(CreateAPIView):
     queryset = ContactMessage.objects.all()
     serializer_class = ContactMessageCreateSerializer

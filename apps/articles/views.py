@@ -66,7 +66,12 @@ class ArticleViewSet(viewsets.ReadOnlyModelViewSet):
         return Response(serializer.data)
 
 
-@extend_schema(tags=['Articles'], summary='لیست نظرات تاییدشده‌ی یک مقاله + ثبت نظر جدید')
+@extend_schema(
+    tags=['Articles'],
+    summary='لیست نظرات تاییدشده‌ی یک مقاله + ثبت نظر جدید',
+    request=CommentCreateSerializer,
+    responses={201: CommentSerializer}
+)
 class ArticleCommentListCreateView(generics.ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == 'POST':

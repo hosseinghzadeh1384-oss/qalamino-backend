@@ -52,7 +52,12 @@ class CartItemAddView(BaseCartView):
         return Response(CartSerializer(cart, context={'request': request}).data, status=status.HTTP_201_CREATED)
 
 
-@extend_schema(tags=['Cart'], summary='بروزرسانی تعداد یک آیتم سبد خرید')
+@extend_schema(
+    tags=['Cart'],
+    summary='بروزرسانی تعداد یک آیتم سبد خرید',
+    request=CartItemSerializer,
+    responses=CartSerializer
+)
 class CartItemUpdateView(BaseCartView):
     def patch(self, request, item_id, *args, **kwargs):
         cart = self.get_cart()

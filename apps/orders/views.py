@@ -130,6 +130,17 @@ class OrderCreateView(APIView):
     tags=['Orders'],
     summary='پیش‌نمایش هزینه ارسال (پست پیشتاز) سبد خرید فعلی',
     request=ShippingEstimateRequestSerializer,
+    responses={
+        200: {
+            "type": "object",
+            "properties": {
+                "items_total": {"type": "integer"},
+                "weight_grams": {"type": "integer"},
+                "shipping_cost": {"type": "integer"},
+                "total_amount": {"type": "integer"},
+            }
+        }
+    }
 )
 class ShippingEstimateView(APIView):
     """

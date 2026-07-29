@@ -7,7 +7,21 @@ from .models import NewsletterSubscriber
 from .serializers import NewsletterSerializer
 
 
-@extend_schema(tags=['newsletter'], summary='عضویت در خبر نامه')
+@extend_schema(
+    tags=['newsletter'],
+    summary='عضویت در خبر نامه',
+    request=NewsletterSerializer,
+    responses={
+        201: {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+)
 class NewsletterSubscribeView(CreateAPIView):
     permission_classes = [AllowAny]
     queryset = NewsletterSubscriber.objects.all()

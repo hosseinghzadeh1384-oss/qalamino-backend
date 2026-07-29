@@ -118,6 +118,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         tags=['Store'],
         summary='مشاهده نظرات محصول (GET) یا ثبت نظر جدید (POST)',
         request=ProductCommentSerializer,
+        responses={201: ProductCommentSerializer}
     )
     @action(detail=True, methods=['get', 'post'], permission_classes=[permissions.IsAuthenticatedOrReadOnly])
     def comments(self, request, slug=None):
@@ -140,6 +141,16 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         tags=['Store'],
         summary='ثبت یا بروزرسانی امتیاز محصول (۱ تا ۵ ستاره)',
         request=ProductRatingSerializer,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "score": {"type": "integer"},
+                    "average_rating": {"type": "number"},
+                    "ratings_count": {"type": "integer"},
+                }
+            }
+        }
     )
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def rate(self, request, slug=None):

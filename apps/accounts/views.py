@@ -12,7 +12,12 @@ from .serializers import LogoutSerializer, OTPRequestSerializer, OTPVerifySerial
 from .sms import SMSProviderError, get_sms_provider
 
 
-@extend_schema(tags=['Auth'], summary='درخواست ارسال کد OTP به شماره تلفن', responses={200: None})
+@extend_schema(
+    tags=['Auth'],
+    summary='درخواست ارسال کد OTP به شماره تلفن',
+    request=OTPRequestSerializer,
+    responses={200: None}
+)
 class OTPRequestView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = 'otp'
@@ -50,7 +55,11 @@ class OTPRequestView(APIView):
         )
 
 
-@extend_schema(tags=['Auth'], summary='تایید کد OTP و دریافت JWT (ورود یا ثبت‌نام خودکار)')
+@extend_schema(
+    tags=['Auth'],
+    summary='تایید کد OTP و دریافت JWT (ورود یا ثبت‌نام خودکار)',
+    request=OTPVerifySerializer,
+)
 class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_scope = 'otp'
