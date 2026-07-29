@@ -1,6 +1,7 @@
 from django.db import transaction
 from apps.payment.models import PaymentStatus
 from .models import Order
+from django.db.models import F
 
 
 @transaction.atomic
@@ -24,11 +25,9 @@ def cancel_order_and_restore_stock(order):
 
     for item in order.items.select_related('product', 'variant'):
         if item.variant_id:
-            item.variant.stock += item.quantity
-            item.variant.save(update_fields=['stock'])
+            item.variant.__class__.objects.filter(pk=item.variant_id).update(stock=F('stock') + item.quantity)
         else:
-            item.product.stock += item.quantity
-            item.product.save(update_fields=['stock'])
+            item.product.__class__.objects.filter(pk=item.product_id).update(stock=F('stock') + item.quantity)
 
     order.status = Order.Status.CANCELLED
     order.save(update_fields=['status', 'updated_at'])
