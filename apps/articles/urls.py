@@ -14,7 +14,7 @@ app_name = 'articles'
 router = DefaultRouter()
 router.register('categories', ArticleCategoryViewSet, basename='article-category')
 router.register('tags', TagViewSet, basename='tag')
-router.register('articles', ArticleViewSet, basename='article')
+router.register('', ArticleViewSet, basename='article')
 
 urlpatterns = [
     path('articles/<slug:slug>/comments/', ArticleCommentListCreateView.as_view(), name='article-comments'),

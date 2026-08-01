@@ -4,6 +4,6 @@ from .views import BannerViewSet
 app_name = 'banner'
 
 router = DefaultRouter()
-router.register('banners', BannerViewSet, basename='banner')
+router.register('', BannerViewSet, basename='banner')
 
 urlpatterns = router.urls
