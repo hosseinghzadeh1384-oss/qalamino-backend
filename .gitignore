@@ -1,5 +1,6 @@
 /db.sqlite3
 /.idea/misc.xml
+/.idea
 .env
 __pycache__/
 *.py[cod]
