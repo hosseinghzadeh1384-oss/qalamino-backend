@@ -27,7 +27,7 @@ from .serializers import (
         201: {
             "type": "object",
             "properties": {
-                "payment_id": {"type": "integer"},
+                "payment_id": {"type": "string", "format": "uuid"},
                 "authority": {"type": "string"},
                 "payment_url": {"type": "string"},
                 "status": {"type": "string"},
