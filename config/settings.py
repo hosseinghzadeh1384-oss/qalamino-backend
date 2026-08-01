@@ -181,7 +181,7 @@ REST_FRAMEWORK = {
 # SimpleJWT
 # ---------------------------------------------------------------------------
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=100),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
@@ -202,7 +202,7 @@ SIMPLE_JWT = {
 # drf-spectacular (Swagger / OpenAPI)
 # ---------------------------------------------------------------------------
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Ghalamino API - قلمینو',
+    'TITLE': 'qalaminoo API - قلمینو',
     'DESCRIPTION': 'مستندات API فروشگاه آنلاین لوازم التحریر قلمینو',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
