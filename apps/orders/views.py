@@ -6,12 +6,13 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.cart.models import Cart
 from apps.store.models import Product, ProductVariant
-from .models import Order, OrderItem
+from .models import Order, OrderItem, SavedAddress
 from .serializers import (
     OrderCreateSerializer,
     OrderDetailSerializer,
     OrderListSerializer,
-    ShippingEstimateRequestSerializer
+    ShippingEstimateRequestSerializer,
+    SavedAddressSerializer
 )
 from .services import cancel_order_and_restore_stock
 from .shipping import calculate_pishtaz_shipping_cost, calculate_total_weight_grams
@@ -66,7 +67,7 @@ class OrderCreateView(APIView):
         if not cart.items.exists():
             raise ValidationError('سبد خرید شما خالی است.')
 
-        info_serializer = OrderCreateSerializer(data=request.data)
+        info_serializer = OrderCreateSerializer(data=request.data, context={'request': request})
         info_serializer.is_valid(raise_exception=True)
 
         order = Order.objects.create(user=request.user, **info_serializer.validated_data)
@@ -190,3 +191,24 @@ class OrderCancelView(APIView):
         cancel_order_and_restore_stock(order)
 
         return Response(OrderDetailSerializer(order, context={'request': request}).data)
+
+
+@extend_schema(tags=["Saved Addresses"], summary="لیست آدرس‌های ذخیره شده کاربر")
+class SavedAddressListCreateView(generics.ListCreateAPIView):
+    serializer_class = SavedAddressSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedAddress.objects.filter(user=self.request.user).order_by("-is_default", "-created_at")
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+
+@extend_schema(tags=["Saved Addresses"], summary="ویرایش یا حذف آدرس ذخیره شده")
+class SavedAddressRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = SavedAddressSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return SavedAddress.objects.filter(user=self.request.user)

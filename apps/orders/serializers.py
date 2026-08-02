@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Order, OrderItem
+from .models import Order, OrderItem, SavedAddress
 
 
 class OrderItemSerializer(serializers.ModelSerializer):
@@ -39,14 +39,73 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
 
 class OrderCreateSerializer(serializers.ModelSerializer):
+    saved_address_id = serializers.IntegerField(
+        required=False,
+        write_only=True,
+    )
+
     class Meta:
         model = Order
         fields = (
-            'receiver_full_name', 'receiver_phone', 'province',
-            'city', 'address', 'postal_code', 'customer_note',
+            "saved_address_id",
+            "receiver_full_name",
+            "receiver_phone",
+            "province",
+            "city",
+            "address",
+            "postal_code",
+            "customer_note",
         )
+
+    def validate(self, attrs):
+        request = self.context["request"]
+        saved_address_id = attrs.pop("saved_address_id", None)
+
+        if saved_address_id:
+            try:
+                saved_address = SavedAddress.objects.get(id=saved_address_id, user=request.user)
+            except SavedAddress.DoesNotExist:
+                raise serializers.ValidationError({"saved_address_id": "آدرس انتخاب شده وجود ندارد."})
+
+            attrs["receiver_full_name"] = saved_address.receiver_full_name
+            attrs["receiver_phone"] = saved_address.receiver_phone
+            attrs["province"] = saved_address.province
+            attrs["city"] = saved_address.city
+            attrs["address"] = saved_address.address
+            attrs["postal_code"] = saved_address.postal_code
+            return attrs
+
+        required_fields = ("receiver_full_name", "receiver_phone", "province", "city", "address", "postal_code")
+
+        for field in required_fields:
+            if not attrs.get(field):
+                raise serializers.ValidationError({field: "این فیلد الزامی است."})
+        return attrs
 
 
 class ShippingEstimateRequestSerializer(serializers.Serializer):
     """برای پیش‌نمایش هزینه‌ی ارسال سبد خرید فعلی، پیش از ثبت نهایی سفارش"""
     province = serializers.CharField(max_length=100)
+
+
+class SavedAddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SavedAddress
+        fields = (
+            "id",
+            "title",
+            "receiver_full_name",
+            "receiver_phone",
+            "province",
+            "city",
+            "address",
+            "postal_code",
+            "is_default",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def create(self, validated_data):
+        validated_data["user"] = self.context["request"].user
+        return super().create(validated_data)

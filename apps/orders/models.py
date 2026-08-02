@@ -65,6 +65,39 @@ class ShippingTariffRow(models.Model):
         return f'تا {self.max_weight_grams} گرم'
 
 
+class SavedAddress(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='saved_address',
+        verbose_name=_('کاربر')
+    )
+    title = models.CharField(_("عنوان"), max_length=50, help_text=_("مثلا خانه، محل کار، انبار"))
+    receiver_full_name = models.CharField(_("نام گیرنده"), max_length=150)
+    receiver_phone = models.CharField(_("تلفن گیرنده"), max_length=11, validators=[phone_regex])
+    province = models.CharField(_("استان"), max_length=100)
+    city = models.CharField(_("شهر"), max_length=100)
+    address = models.TextField(_('آدرس کامل'))
+    postal_code = models.CharField(_('کد پستی'), max_length=10)
+    is_default = models.BooleanField(_("آدرس پیش فرض"), default=False)
+    created_at = models.DateTimeField(_('تاریخ ثبت'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('تاریخ بروزرسانی'), auto_now=True)
+
+    class Meta:
+        verbose_name = 'آدرس ذخیره شده'
+        verbose_name_plural = 'آدرس های ذخیره شده'
+        ordering = ['-is_default', '-created_at']
+
+    def __str__(self):
+        return f"{self.user} - {self.title}"
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+        if self.is_default:
+            SavedAddress.objects.filter(user=self.user).exclude(pk=self.pk).update(is_default=False)
+
+
 class Order(models.Model):
     class Status(models.TextChoices):
         PENDING_PAYMENT = 'pending_payment', _('در انتظار پرداخت')

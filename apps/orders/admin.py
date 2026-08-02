@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.db import transaction
 from django.shortcuts import redirect
 from django.urls import reverse
-from .models import AdminNotificationPhone, Order, OrderItem, ShippingSettings, ShippingTariffRow
+from .models import AdminNotificationPhone, Order, OrderItem, ShippingSettings, ShippingTariffRow, SavedAddress
 from .notifications import notify_order_shipped
 
 
@@ -66,3 +66,22 @@ class AdminNotificationPhoneAdmin(admin.ModelAdmin):
     list_display = ('phone_number', 'note', 'is_active', 'created_at')
     list_filter = ('is_active',)
     search_fields = ('phone_number', 'note')
+
+
+@admin.register(SavedAddress)
+class SavedAddressAdmin(admin.ModelAdmin):
+    list_display = (
+        'title',
+        'user',
+        'receiver_full_name',
+        'receiver_phone',
+        'province',
+        'city',
+        'is_default',
+        'created_at',
+    )
+    list_filter = ('province', 'city', 'is_default')
+    search_fields = ('title', 'user__phone_number', 'receiver_full_name', 'receiver_phone', 'address')
+    autocomplete_fields = ('user',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('user', '-is_default', '-created_at')
