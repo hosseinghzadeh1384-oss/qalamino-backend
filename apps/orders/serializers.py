@@ -28,7 +28,7 @@ class OrderDetailSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             'id', 'order_number', 'status',
-            'receiver_full_name', 'receiver_phone', 'province', 'city', 'address', 'postal_code',
+            'receiver_first_name', 'receiver_last_name', 'receiver_phone', 'province', 'city', 'address', 'postal_code',
             'items', 'items_total', 'shipping_cost', 'discount_total', 'total_amount',
             'customer_note', 'created_at', 'paid_at',
         )
@@ -78,7 +78,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             return attrs
 
         required_fields = (
-            "receiver_first_name"
+            "receiver_first_name",
             "receiver_last_name",
             "receiver_phone",
             "province",

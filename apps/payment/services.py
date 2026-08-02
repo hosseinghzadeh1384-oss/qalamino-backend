@@ -33,13 +33,17 @@ class PaymentService:
     @staticmethod
     @transaction.atomic
     def mark_failed(payment):
-        """برای مواردی که خود درگاه پرداخت را ناموفق اعلام کرده (status=NOK) و اصلاً نیازی به verify نیست."""
+        """
+        فقط تلاش پرداخت را ناموفق می‌کند.
+        سفارش در وضعیت pending_payment باقی می‌ماند تا کاربر بتواند
+        دوباره پرداخت کند یا سفارش را لغو کند.
+        """
         order = Order.objects.select_for_update().get(pk=payment.order_id)
+        payment = Payment.objects.select_for_update().get(pk=payment.pk)
 
-        payment.mark_as_failed()
-        if order.status == Order.Status.PENDING_PAYMENT:
-            order.status = Order.Status.FAILED
-            order.save(update_fields=["status", "updated_at"])
+        # پرداخت موفق یا لغوشده نباید با callback تکراری خراب شود
+        if payment.status == PaymentStatus.PENDING:
+            payment.mark_as_failed()
 
         return payment
 
@@ -77,10 +81,9 @@ class PaymentService:
                 order.paid_at = timezone.now()
                 order.save(update_fields=["status", "paid_at", "updated_at"])
                 transaction.on_commit(lambda: notify_order_paid(order))
-        else:
-            payment.mark_as_failed()
-            if order.status == Order.Status.PENDING_PAYMENT:
-                order.status = Order.Status.FAILED
-                order.save(update_fields=["status", "updated_at"])
+            else:
+                # فقط این تلاش پرداخت ناموفق شده است.
+                # سفارش همچنان قابل پرداخت یا لغو باقی می‌ماند.
+                payment.mark_as_failed()
 
         return payment
