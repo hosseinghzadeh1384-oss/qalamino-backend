@@ -73,7 +73,8 @@ class SavedAddressAdmin(admin.ModelAdmin):
     list_display = (
         'title',
         'user',
-        'receiver_full_name',
+        "receiver_first_name",
+        "receiver_last_name",
         'receiver_phone',
         'province',
         'city',
@@ -81,7 +82,14 @@ class SavedAddressAdmin(admin.ModelAdmin):
         'created_at',
     )
     list_filter = ('province', 'city', 'is_default')
-    search_fields = ('title', 'user__phone_number', 'receiver_full_name', 'receiver_phone', 'address')
+    search_fields = (
+        'title',
+        'user__phone_number',
+        "receiver_first_name",
+        "receiver_last_name",
+        'receiver_phone',
+        'address'
+    )
     autocomplete_fields = ('user',)
     readonly_fields = ('created_at', 'updated_at')
     ordering = ('user', '-is_default', '-created_at')

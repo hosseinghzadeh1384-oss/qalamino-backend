@@ -48,7 +48,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
         model = Order
         fields = (
             "saved_address_id",
-            "receiver_full_name",
+            "receiver_first_name",
+            "receiver_last_name",
             "receiver_phone",
             "province",
             "city",
@@ -67,7 +68,8 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             except SavedAddress.DoesNotExist:
                 raise serializers.ValidationError({"saved_address_id": "آدرس انتخاب شده وجود ندارد."})
 
-            attrs["receiver_full_name"] = saved_address.receiver_full_name
+            attrs["receiver_first_name"] = saved_address.receiver_first_name
+            attrs["receiver_last_name"] = saved_address.receiver_last_name
             attrs["receiver_phone"] = saved_address.receiver_phone
             attrs["province"] = saved_address.province
             attrs["city"] = saved_address.city
@@ -75,7 +77,15 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             attrs["postal_code"] = saved_address.postal_code
             return attrs
 
-        required_fields = ("receiver_full_name", "receiver_phone", "province", "city", "address", "postal_code")
+        required_fields = (
+            "receiver_first_name"
+            "receiver_last_name",
+            "receiver_phone",
+            "province",
+            "city",
+            "address",
+            "postal_code"
+        )
 
         for field in required_fields:
             if not attrs.get(field):
@@ -94,7 +104,8 @@ class SavedAddressSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "title",
-            "receiver_full_name",
+            "receiver_first_name",
+            "receiver_last_name",
             "receiver_phone",
             "province",
             "city",

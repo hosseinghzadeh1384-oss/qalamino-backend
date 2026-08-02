@@ -1,5 +1,7 @@
 import logging
 from django.conf import settings
+from django.dispatch import receiver
+
 from apps.accounts.sms import SMSProviderError, get_sms_provider
 from apps.orders.models import AdminNotificationPhone
 
@@ -21,10 +23,11 @@ def notify_order_paid(order):
     - به مشتری: با الگوی KAVENEGAR_ORDER_PAID_CUSTOMER_TEMPLATE، شامل نام گیرنده و شماره سفارش
     - به مدیر/مدیران: با الگوی KAVENEGAR_ORDER_PAID_ADMIN_TEMPLATE، شامل شماره سفارش و مبلغ سفارش
     """
+    receiver_full_name = f"{order.receiver_first_name} {order.receiver_last_name}"
     _send_lookup_sms(
         order.receiver_phone,
         settings.KAVENEGAR_ORDER_PAID_CUSTOMER_TEMPLATE,
-        order.receiver_full_name,
+        receiver_full_name,
         order.order_number,
     )
 
@@ -43,9 +46,10 @@ def notify_order_shipped(order):
     پس از ثبت کد رهگیری پستی توسط ادمین، به مشتری با الگوی KAVENEGAR_ORDER_SHIPPED_TEMPLATE
     پیامک ارسال می‌شود که شامل نام گیرنده و کد رهگیری است.
     """
+    receiver_full_name = f"{order.receiver_first_name} {order.receiver_last_name}"
     _send_lookup_sms(
         order.receiver_phone,
         settings.KAVENEGAR_ORDER_SHIPPED_TEMPLATE,
-        order.receiver_full_name,
+        receiver_full_name,
         order.tracking_code,
     )

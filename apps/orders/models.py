@@ -73,7 +73,8 @@ class SavedAddress(models.Model):
         verbose_name=_('کاربر')
     )
     title = models.CharField(_("عنوان"), max_length=50, help_text=_("مثلا خانه، محل کار، انبار"))
-    receiver_full_name = models.CharField(_("نام گیرنده"), max_length=150)
+    receiver_first_name = models.CharField(_('نام گیرنده'), max_length=75, blank=True)
+    receiver_last_name = models.CharField(_('نام خانوادگی گیرنده'), max_length=75, blank=True)
     receiver_phone = models.CharField(_("تلفن گیرنده"), max_length=11, validators=[phone_regex])
     province = models.CharField(_("استان"), max_length=100)
     city = models.CharField(_("شهر"), max_length=100)
@@ -89,7 +90,7 @@ class SavedAddress(models.Model):
         ordering = ['-is_default', '-created_at']
 
     def __str__(self):
-        return f"{self.user} - {self.title}"
+        return f"{self.receiver_first_name} {self.receiver_last_name} - {self.title}"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
@@ -122,7 +123,8 @@ class Order(models.Model):
         on_delete=models.PROTECT,
     )
     status = models.CharField(_('وضعیت'), max_length=20, choices=Status.choices, default=Status.PENDING_PAYMENT)
-    receiver_full_name = models.CharField(_('نام گیرنده'), max_length=150)
+    receiver_first_name = models.CharField(_('نام گیرنده'), max_length=75, blank=True)
+    receiver_last_name = models.CharField(_('نام خانوادگی گیرنده'), max_length=75, blank=True)
     receiver_phone = models.CharField(_('تلفن گیرنده'), max_length=11, validators=[phone_regex])
     province = models.CharField(_('استان'), max_length=100)
     city = models.CharField(_('شهر'), max_length=100)
