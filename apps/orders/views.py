@@ -6,16 +6,44 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from apps.cart.models import Cart
 from apps.store.models import Product, ProductVariant
-from .models import Order, OrderItem, SavedAddress
+from .models import (
+    Order,
+    OrderItem,
+    SavedAddress,
+    ShippingMethod,
+)
 from .serializers import (
     OrderCreateSerializer,
     OrderDetailSerializer,
     OrderListSerializer,
     ShippingEstimateRequestSerializer,
-    SavedAddressSerializer
+    ShippingMethodSerializer,
+    SavedAddressSerializer,
 )
 from .services import cancel_order_and_restore_stock
-from .shipping import calculate_pishtaz_shipping_cost, calculate_total_weight_grams
+from .shipping import calculate_shipping_cost, calculate_total_weight_grams
+
+
+@extend_schema(
+    tags=['Orders'],
+    summary='لیست روش‌های ارسال فعال',
+    responses={200: ShippingMethodSerializer(many=True)},
+)
+class ShippingMethodListView(generics.ListAPIView):
+    serializer_class = ShippingMethodSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return (
+            ShippingMethod.objects
+            .filter(
+                is_active=True,
+                tariff_rows__isnull=False,
+            )
+            .prefetch_related('tariff_rows')
+            .order_by('sort_order', 'id')
+            .distinct()
+        )
 
 
 @extend_schema(tags=['Orders'], summary='لیست سفارش‌های کاربر جاری')
@@ -115,13 +143,40 @@ class OrderCreateView(APIView):
             item_weight_grams = variant.effective_weight_grams if variant else product.weight_grams
             weighted_items.append((item_weight_grams, cart_item.quantity))
 
-        total_weight_grams = calculate_total_weight_grams(weighted_items)
-        shipping_cost = calculate_pishtaz_shipping_cost(total_weight_grams, order.province, items_total)
+        total_weight_grams = calculate_total_weight_grams(
+            weighted_items
+        )
+
+        try:
+            shipping_cost = calculate_shipping_cost(
+                total_weight_grams=total_weight_grams,
+                province=order.province,
+                shipping_method=order.shipping_method,
+                items_total=items_total,
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc))
 
         order.items_total = items_total
+        order.total_weight_grams = total_weight_grams
+        order.shipping_method_name = order.shipping_method.name
         order.shipping_cost = shipping_cost
-        order.total_amount = items_total + shipping_cost - order.discount_total
-        order.save(update_fields=['items_total', 'shipping_cost', 'total_amount'])
+        order.total_amount = (
+                items_total
+                + shipping_cost
+                - order.discount_total
+        )
+
+        order.save(
+            update_fields=[
+                'items_total',
+                'total_weight_grams',
+                'shipping_method_name',
+                'shipping_cost',
+                'total_amount',
+                'updated_at',
+            ]
+        )
         cart.items.all().delete()
 
         return Response(OrderDetailSerializer(order, context={'request': request}).data, status=status.HTTP_201_CREATED)
@@ -129,52 +184,107 @@ class OrderCreateView(APIView):
 
 @extend_schema(
     tags=['Orders'],
-    summary='پیش‌نمایش هزینه ارسال (پست پیشتاز) سبد خرید فعلی',
+    summary='پیش‌نمایش هزینه روش ارسال انتخاب‌شده',
     request=ShippingEstimateRequestSerializer,
     responses={
         200: {
-            "type": "object",
-            "properties": {
-                "items_total": {"type": "integer"},
-                "weight_grams": {"type": "integer"},
-                "shipping_cost": {"type": "integer"},
-                "total_amount": {"type": "integer"},
-            }
+            'type': 'object',
+            'properties': {
+                'shipping_method': {
+                    'type': 'object',
+                    'properties': {
+                        'id': {'type': 'integer'},
+                        'name': {'type': 'string'},
+                        'code': {'type': 'string'},
+                        'estimated_delivery_time': {
+                            'type': 'string',
+                        },
+                    },
+                },
+                'items_total': {'type': 'integer'},
+                'weight_grams': {'type': 'integer'},
+                'shipping_cost': {'type': 'integer'},
+                'total_amount': {'type': 'integer'},
+            },
         }
-    }
+    },
 )
 class ShippingEstimateView(APIView):
     """
-    بدون ثبت سفارش، هزینه‌ی ارسال پیشتاز را برای سبد خرید فعلی کاربر و استانِ داده‌شده
-    محاسبه و برمی‌گرداند - برای نمایش هزینه ارسال در صفحه‌ی سبد خرید/پیش از پرداخت.
+    هزینه روش ارسال انتخاب‌شده را برای سبد خرید فعلی
+    بدون ثبت سفارش محاسبه می‌کند.
     """
+
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
-        serializer = ShippingEstimateRequestSerializer(data=request.data)
+        serializer = ShippingEstimateRequestSerializer(
+            data=request.data
+        )
         serializer.is_valid(raise_exception=True)
-        province = serializer.validated_data['province']
 
-        cart = Cart.objects.filter(user=request.user).first()
-        if not cart or cart.is_expired or not cart.items.exists():
-            raise ValidationError('سبد خرید شما خالی است.')
+        province = serializer.validated_data['province']
+        shipping_method_id = serializer.validated_data[
+            'shipping_method_id'
+        ]
+
+        shipping_method = ShippingMethod.objects.get(
+            id=shipping_method_id,
+            is_active=True,
+        )
+
+        cart = Cart.objects.filter(
+            user=request.user
+        ).first()
+
+        if (
+            not cart
+            or cart.is_expired
+            or not cart.items.exists()
+        ):
+            raise ValidationError(
+                'سبد خرید شما خالی است.'
+            )
 
         items_total = 0
         weighted_items = []
-        for cart_item in cart.items.select_related('product', 'variant'):
-            items_total += cart_item.total_price
-            weighted_items.append((cart_item.effective_weight_grams, cart_item.quantity))
 
-        total_weight_grams = calculate_total_weight_grams(weighted_items)
-        shipping_cost = calculate_pishtaz_shipping_cost(total_weight_grams, province, items_total)
+        for cart_item in cart.items.select_related(
+            'product',
+            'variant',
+        ):
+            items_total += cart_item.total_price
+
+            weighted_items.append((
+                cart_item.effective_weight_grams,
+                cart_item.quantity,
+            ))
+
+        total_weight_grams = calculate_total_weight_grams(
+            weighted_items
+        )
+
+        try:
+            shipping_cost = calculate_shipping_cost(
+                total_weight_grams=total_weight_grams,
+                province=province,
+                shipping_method=shipping_method,
+                items_total=items_total,
+            )
+        except ValueError as exc:
+            raise ValidationError(str(exc))
 
         return Response({
+            'shipping_method': ShippingMethodSerializer(
+                shipping_method
+            ).data,
             'items_total': items_total,
             'weight_grams': total_weight_grams,
             'shipping_cost': shipping_cost,
-            'total_amount': items_total + shipping_cost,
+            'total_amount': (
+                items_total + shipping_cost
+            ),
         })
-
 
 @extend_schema(tags=['Orders'], summary='لغو سفارش (فقط در وضعیت در انتظار پرداخت)')
 class OrderCancelView(APIView):

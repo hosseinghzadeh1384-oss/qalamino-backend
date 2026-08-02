@@ -1,82 +1,197 @@
 """
-محاسبه‌ی هزینه‌ی ارسال بر اساس پست پیشتاز.
+محاسبه وزن و هزینه ارسال سفارش.
 
-منطق کار:
-1. وزن کل مرسوله از روی وزن تک‌تکِ محصولات/تنوع‌های داخل سفارش و تعدادشان جمع زده می‌شود.
-   اگر آیتمی تنوع (varient) داشته باشد و برای همان تنوع وزنی ثبت شده باشد، همان وزن استفاده
-   می‌شود؛ در غیر این صورت وزنِ خودِ محصول (`Product.weight_grams`) به کار می‌رود. برای
-   محصولاتی که وزنشان هم ثبت نشده، از `settings.DEFAULT_PRODUCT_WEIGHT_GRAMS` استفاده می‌شود
-   تا محاسبه هیچ‌وقت با وزنِ صفر/نامعلوم انجام نشود.
-2. با توجه به وزن کل و استانِ مقصد (تهران در برابر سایر استان‌ها)، هزینه از روی جدول تعرفه‌ی
-   `ShippingTariffRow` خوانده می‌شود.
-3. اگر `settings.FREE_SHIPPING_THRESHOLD` تنظیم شده و جمع قیمت کالاها به آن برسد، ارسال رایگان می‌شود.
-
-جدول تعرفه (`ShippingTariffRow`) و هزینه‌ی هر کیلوگرم اضافه (`ShippingSettings.extra_cost_per_kg`)
-از پنل ادمین قابل مدیریت هستند، پس تغییر/به‌روزرسانیِ تعرفه‌ی رسمی پست پیشتاز نیازی به تغییر کد
-یا دیپلوی مجدد ندارد.
+هر روش ارسال جدول تعرفه وزنی مستقل و هزینه وزن مازاد مخصوص خود را دارد.
+وزن سفارش از وزن محصول یا تنوع محصول و تعداد آن محاسبه می‌شود.
 """
+
 import math
+
 from django.conf import settings
 
 
 def calculate_total_weight_grams(weighted_items):
     """
-    وزن کل (گرم) را از روی لیستی از `(weight_grams, quantity)` محاسبه می‌کند.
+    وزن کل سفارش را برحسب گرم محاسبه می‌کند.
 
-    `weight_grams` می‌تواند `None` باشد (یعنی برای آن محصول/تنوع وزنی ثبت نشده)؛ در این صورت
-    `settings.DEFAULT_PRODUCT_WEIGHT_GRAMS` جایگزین آن می‌شود.
+    weighted_items:
+        لیستی از زوج‌های (weight_grams, quantity)
+
+    اگر وزن محصول یا تنوع ثبت نشده باشد، مقدار
+    DEFAULT_PRODUCT_WEIGHT_GRAMS استفاده می‌شود.
     """
-    default_weight = getattr(settings, 'DEFAULT_PRODUCT_WEIGHT_GRAMS', 200)
-    total = 0
+
+    default_weight = getattr(
+        settings,
+        'DEFAULT_PRODUCT_WEIGHT_GRAMS',
+        200,
+    )
+
+    total_weight = 0
+
     for weight_grams, quantity in weighted_items:
-        total += (weight_grams or default_weight) * quantity
-    return total
+        final_weight = weight_grams or default_weight
+        total_weight += final_weight * quantity
+
+    return total_weight
 
 
 def _is_tehran(province):
-    tehran_name = getattr(settings, 'PISHTAZ_TEHRAN_PROVINCE_NAME', 'تهران')
+    """
+    بررسی می‌کند استان مقصد تهران است یا خیر.
+    """
+
+    tehran_name = getattr(
+        settings,
+        'PISHTAZ_TEHRAN_PROVINCE_NAME',
+        'تهران',
+    )
+
     return (province or '').strip() == tehran_name
 
 
-def calculate_pishtaz_shipping_cost(total_weight_grams, province, items_total=0):
+def calculate_shipping_cost(
+        total_weight_grams,
+        province,
+        shipping_method,
+        items_total=0,
+):
     """
-    هزینه‌ی ارسال پیشتاز (تومان) را بر اساس وزن کل مرسوله و استان مقصد برمی‌گرداند.
+    هزینه ارسال یک روش مشخص را محاسبه می‌کند.
 
-    - `total_weight_grams`: وزن کل مرسوله به گرم.
-    - `province`: نام استان مقصد (مثلاً همان مقدار فیلد `Order.province`).
-    - `items_total`: جمع قیمت کالاها (تومان)، فقط برای بررسی آستانه‌ی ارسال رایگان لازم است.
+    ورودی‌ها:
+        total_weight_grams:
+            وزن کل سفارش به گرم.
+
+        province:
+            استان مقصد.
+
+        shipping_method:
+            نمونه‌ای از مدل ShippingMethod.
+
+        items_total:
+            جمع قیمت کالاها برای بررسی ارسال رایگان.
+
+    خروجی:
+        هزینه ارسال به تومان.
+
+    خطا:
+        اگر روش ارسال غیرفعال باشد یا تعرفه‌ای نداشته باشد،
+        ValueError ایجاد می‌شود.
     """
-    # وارد کردن اینجا (به‌جای بالای فایل) برای جلوگیری از مشکل import چرخشی هنگام بارگذاری اپ‌ها
-    from .models import ShippingSettings, ShippingTariffRow
 
-    free_shipping_threshold = getattr(settings, 'FREE_SHIPPING_THRESHOLD', 0)
-    if free_shipping_threshold and items_total >= free_shipping_threshold:
+    from .models import ShippingTariffRow
+
+    if shipping_method is None:
+        raise ValueError('روش ارسال مشخص نشده است.')
+
+    if not shipping_method.is_active:
+        raise ValueError('روش ارسال انتخاب‌شده غیرفعال است.')
+
+    free_shipping_threshold = getattr(
+        settings,
+        'FREE_SHIPPING_THRESHOLD',
+        0,
+    )
+
+    if (
+            free_shipping_threshold
+            and items_total >= free_shipping_threshold
+    ):
         return 0
 
     tariff_table = list(
-        ShippingTariffRow.objects.order_by('max_weight_grams').values_list(
-            'max_weight_grams', 'tehran_price', 'other_price'
+        ShippingTariffRow.objects.filter(
+            shipping_method=shipping_method,
+        )
+        .order_by('max_weight_grams')
+        .values_list(
+            'max_weight_grams',
+            'tehran_price',
+            'other_price',
         )
     )
-    if not tariff_table:
-        return 0
 
-    # وزنِ نامعتبر/صفر را هم با کمترین وزنِ پیش‌فرض جایگزین می‌کنیم تا هزینه هیچ‌وقت صفر نشود
+    if not tariff_table:
+        raise ValueError(
+            'برای روش ارسال انتخاب‌شده تعرفه‌ای ثبت نشده است.'
+        )
+
     if total_weight_grams <= 0:
-        total_weight_grams = getattr(settings, 'DEFAULT_PRODUCT_WEIGHT_GRAMS', 200)
+        total_weight_grams = getattr(
+            settings,
+            'DEFAULT_PRODUCT_WEIGHT_GRAMS',
+            200,
+        )
 
     is_tehran = _is_tehran(province)
 
-    for max_weight_grams, tehran_price, other_price in tariff_table:
+    for (
+            max_weight_grams,
+            tehran_price,
+            other_price,
+    ) in tariff_table:
         if total_weight_grams <= max_weight_grams:
-            return tehran_price if is_tehran else other_price
+            if is_tehran:
+                return tehran_price
 
-    # وزن از بیشترین سقف جدول هم بیشتر است: روی هزینه‌ی آخرین ردیف، به ازای هر کیلوگرم
-    # اضافه (یا کسری از آن) هزینه‌ی ShippingSettings.extra_cost_per_kg افزوده می‌شود.
-    last_max_weight_grams, last_tehran_price, last_other_price = tariff_table[-1]
-    extra_weight_grams = total_weight_grams - last_max_weight_grams
-    extra_kg_steps = math.ceil(extra_weight_grams / 1000)
-    extra_cost = extra_kg_steps * ShippingSettings.get_solo().extra_cost_per_kg
+            return other_price
 
-    base_price = last_tehran_price if is_tehran else last_other_price
+    (
+        last_max_weight_grams,
+        last_tehran_price,
+        last_other_price,
+    ) = tariff_table[-1]
+
+    extra_weight_grams = (
+            total_weight_grams - last_max_weight_grams
+    )
+
+    extra_kg_steps = math.ceil(
+        extra_weight_grams / 1000
+    )
+
+    extra_cost = (
+            extra_kg_steps
+            * shipping_method.extra_cost_per_kg
+    )
+
+    base_price = (
+        last_tehran_price
+        if is_tehran
+        else last_other_price
+    )
+
     return base_price + extra_cost
+
+
+def calculate_pishtaz_shipping_cost(
+        total_weight_grams,
+        province,
+        items_total=0,
+):
+    """
+    تابع موقت سازگاری با API فعلی.
+
+    تا زمانی که views.py در مرحله بعد به روش ارسال انتخابی
+    متصل شود، درخواست‌های قبلی همچنان کار می‌کنند.
+    """
+
+    from .models import ShippingMethod
+
+    shipping_method = ShippingMethod.objects.filter(
+        code='pishtaz',
+        is_active=True,
+    ).first()
+
+    if shipping_method is None:
+        raise ValueError(
+            'روش ارسال پست پیشتاز تعریف یا فعال نشده است.'
+        )
+
+    return calculate_shipping_cost(
+        total_weight_grams=total_weight_grams,
+        province=province,
+        shipping_method=shipping_method,
+        items_total=items_total,
+    )

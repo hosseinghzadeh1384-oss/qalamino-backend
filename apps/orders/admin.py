@@ -2,7 +2,15 @@ from django.contrib import admin
 from django.db import transaction
 from django.shortcuts import redirect
 from django.urls import reverse
-from .models import AdminNotificationPhone, Order, OrderItem, ShippingSettings, ShippingTariffRow, SavedAddress
+from .models import (
+    AdminNotificationPhone,
+    Order,
+    OrderItem,
+    ShippingSettings,
+    ShippingTariffRow,
+    SavedAddress,
+    ShippingMethod
+)
 from .notifications import notify_order_shipped
 
 
@@ -14,10 +22,31 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('order_number', 'user', 'status', 'total_amount', 'tracking_code', 'created_at', 'paid_at')
+    list_display = (
+        'order_number',
+        'user',
+        'status',
+        'shipping_method_name',
+        'shipping_cost',
+        'total_amount',
+        'tracking_code',
+        'created_at',
+        'paid_at',
+    )
     list_filter = ('status',)
     search_fields = ('order_number', 'user__phone_number', 'receiver_phone', 'tracking_code')
-    readonly_fields = ('order_number', 'items_total', 'total_amount', 'created_at', 'updated_at', 'paid_at')
+    readonly_fields = (
+        'order_number',
+        'shipping_method_name',
+        'total_weight_grams',
+        'shipping_cost',
+        'shipping_method',
+        'items_total',
+        'total_amount',
+        'created_at',
+        'updated_at',
+        'paid_at',
+    )
     inlines = [OrderItemInline]
 
     def save_model(self, request, obj, form, change):
@@ -55,10 +84,22 @@ class ShippingSettingsAdmin(admin.ModelAdmin):
         return redirect(url)
 
 
+@admin.register(ShippingMethod)
+class ShippingMethodAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'estimated_delivery_time', 'extra_cost_per_kg', 'is_active', 'sort_order')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'code', 'description')
+    list_editable = ('is_active', 'sort_order')
+    ordering = ('sort_order', 'id')
+
+
 @admin.register(ShippingTariffRow)
 class ShippingTariffRowAdmin(admin.ModelAdmin):
-    list_display = ('max_weight_grams', 'tehran_price', 'other_price')
-    ordering = ('max_weight_grams',)
+    list_display = ('shipping_method', 'max_weight_grams', 'tehran_price', 'other_price')
+    list_filter = ('shipping_method',)
+    search_fields = ('shipping_method__name', 'shipping_method__code')
+    autocomplete_fields = ('shipping_method',)
+    ordering = ('shipping_method', 'max_weight_grams')
 
 
 @admin.register(AdminNotificationPhone)

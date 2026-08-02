@@ -47,22 +47,65 @@ class ShippingSettings(models.Model):
         return obj
 
 
+class ShippingMethod(models.Model):
+    name = models.CharField(_('نام روش ارسال'), max_length=100, unique=True)
+    code = models.SlugField(_('کد روش ارسال'), max_length=100, unique=True, help_text=_('مثلاً pishtaz یا tipax'))
+    description = models.TextField(_('توضیحات'), blank=True)
+    estimated_delivery_time = models.CharField(_('زمان تقریبی تحویل'), max_length=100, blank=True,
+                                               help_text=_('مثلاً ۲ تا ۴ روز کاری'))
+    extra_cost_per_kg = models.PositiveIntegerField(
+        _('هزینه هر کیلوگرم مازاد (تومان)'),
+        default=0,
+        help_text=_(
+            'اگر وزن سفارش از بیشترین سقف تعرفه بیشتر شود، '
+            'این مبلغ به ازای هر کیلوگرم اضافه محاسبه می‌شود.'
+        ),
+    )
+    is_active = models.BooleanField(_('فعال'), default=True)
+    sort_order = models.PositiveSmallIntegerField(_('ترتیب نمایش'), default=0)
+
+    class Meta:
+        verbose_name = _('روش ارسال')
+        verbose_name_plural = _('روش‌های ارسال')
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return self.name
+
+
 class ShippingTariffRow(models.Model):
-    """
-    یک ردیف از جدولِ تعرفه‌ی پست پیشتاز: تا سقفِ وزنِ مشخص، هزینه برای مقصد تهران و سایر استان‌ها
-    چقدر است. این جدول از پنل ادمین قابل مدیریت (افزودن/ویرایش/حذف ردیف) است.
-    """
-    max_weight_grams = models.PositiveIntegerField(_('سقف وزن (گرم)'), unique=True)
+    shipping_method = models.ForeignKey(
+        ShippingMethod,
+        verbose_name=_('روش ارسال'),
+        related_name='tariff_rows',
+        on_delete=models.CASCADE,
+    )
+    max_weight_grams = models.PositiveIntegerField(_('سقف وزن (گرم)'))
     tehran_price = models.PositiveIntegerField(_('هزینه برای تهران (تومان)'))
     other_price = models.PositiveIntegerField(_('هزینه برای سایر استان‌ها (تومان)'))
 
     class Meta:
-        verbose_name = _('ردیف تعرفه پست پیشتاز')
-        verbose_name_plural = _('جدول تعرفه پست پیشتاز')
-        ordering = ['max_weight_grams']
+        verbose_name = _('ردیف تعرفه ارسال')
+        verbose_name_plural = _('تعرفه‌های وزنی ارسال')
+        ordering = [
+            'shipping_method_id',
+            'max_weight_grams',
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=[
+                    'shipping_method',
+                    'max_weight_grams',
+                ],
+                name='unique_shipping_method_weight_limit',
+            ),
+        ]
 
     def __str__(self):
-        return f'تا {self.max_weight_grams} گرم'
+        return (
+            f'{self.shipping_method.name} - '
+            f'تا {self.max_weight_grams} گرم'
+        )
 
 
 class SavedAddress(models.Model):
@@ -131,6 +174,16 @@ class Order(models.Model):
     address = models.TextField(_('آدرس کامل'))
     postal_code = models.CharField(_('کد پستی'), max_length=10)
     items_total = models.PositiveIntegerField(_('جمع قیمت کالاها (تومان)'), default=0)
+    shipping_method = models.ForeignKey(
+        ShippingMethod,
+        verbose_name=_('روش ارسال'),
+        related_name='orders',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
+    )
+    shipping_method_name = models.CharField(_('نام روش ارسال در لحظه سفارش'), max_length=100, blank=True)
+    total_weight_grams = models.PositiveIntegerField(_('وزن کل سفارش (گرم)'), default=0)
     shipping_cost = models.PositiveIntegerField(_('هزینه ارسال (تومان)'), default=0)
     discount_total = models.PositiveIntegerField(_('مجموع تخفیف (تومان)'), default=0)
     total_amount = models.PositiveIntegerField(_('مبلغ نهایی قابل‌پرداخت (تومان)'), default=0)
