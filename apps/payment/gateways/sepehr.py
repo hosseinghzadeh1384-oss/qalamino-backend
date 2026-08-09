@@ -64,7 +64,10 @@ class SepehrGateway(BasePaymentGateway):
         if str(data.get("Status")) != "0":
             raise PaymentGatewayError(data.get("Message") or "خطا در دریافت توکن از سپهر.")
 
-        token = data["AccessToken"]
+        token = data.get("AccessToken") or data.get("Accesstoken")
+
+        if not token:
+            raise PaymentGatewayError("درگاه سپهر پاسخ موفق برگرداند اما توکن پرداخت در پاسخ وجود ندارد.")
 
         return {"authority": token, "payment_url": self._redirect_view_url(payment)}
 
