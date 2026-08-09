@@ -50,7 +50,7 @@ class ProductCommentSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'user_name', 'created_at')
 
     def get_user_name(self, obj):
-        return obj.user.full_name or obj.user.phone_number
+        return obj.user.full_name or "کاربر ناشناس"
 
     def validate_body(self, value):
         value = value.strip()

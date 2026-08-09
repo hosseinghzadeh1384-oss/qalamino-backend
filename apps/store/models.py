@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Min, Sum
+from django.db.models.signals import post_delete, post_save, pre_save
+from django.dispatch import receiver
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
@@ -13,9 +16,38 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+class SKUCounter(models.Model):
+    next_value = models.PositiveBigIntegerField(default=100)
+
+    class Meta:
+        verbose_name = _('شمارنده SKU')
+        verbose_name_plural = _('شمارنده SKU')
+
+    def __str__(self):
+        return str(self.next_value)
+
+
+def generate_unique_sku():
+    with transaction.atomic():
+        SKUCounter.objects.get_or_create(pk=1, defaults={'next_value': 100})
+        counter = SKUCounter.objects.select_for_update().get(pk=1)
+        candidate = max(counter.next_value, 100)
+
+        while (
+                Product.objects.filter(sku=str(candidate)).exists()
+                or ProductVariant.objects.filter(sku=str(candidate)).exists()
+        ):
+            candidate += 1
+
+        counter.next_value = candidate + 1
+        counter.save(update_fields=['next_value'])
+
+        return str(candidate)
+
+
 class Category(TimeStampedModel):
     name = models.CharField(_('نام دسته‌بندی'), max_length=150)
-    slug = models.SlugField(_('اسلاگ'), max_length=170, unique=True, blank=True)
+    slug = models.SlugField(_('اسلاگ'), max_length=170, unique=True, blank=True, allow_unicode=True)
     parent = models.ForeignKey(
         'self',
         verbose_name=_('دسته‌بندی والد'),
@@ -43,7 +75,7 @@ class Category(TimeStampedModel):
 
 class Brand(TimeStampedModel):
     name = models.CharField(_('نام برند'), max_length=150, unique=True)
-    slug = models.SlugField(_('اسلاگ'), max_length=170, unique=True, blank=True)
+    slug = models.SlugField(_('اسلاگ'), max_length=170, unique=True, blank=True, allow_unicode=True)
     logo = models.ImageField(_('لوگو'), upload_to='brands/', blank=True, null=True)
     description = models.TextField(_('توضیحات'), blank=True)
     is_active = models.BooleanField(_('فعال'), default=True)
@@ -69,7 +101,7 @@ class Product(TimeStampedModel):
         ARCHIVED = 'archived', _('بایگانی‌شده')
 
     name = models.CharField(_('نام محصول'), max_length=255)
-    slug = models.SlugField(_('اسلاگ'), max_length=280, unique=True, blank=True)
+    slug = models.SlugField(_('اسلاگ'), max_length=280, unique=True, blank=True, allow_unicode=True)
     category = models.ForeignKey(
         Category,
         verbose_name=_('دسته‌بندی'),
@@ -85,7 +117,7 @@ class Product(TimeStampedModel):
         blank=True,
     )
     description = models.TextField(_('توضیحات'), blank=True)
-    sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True)
+    sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True, blank=True, editable=False)
     price = models.PositiveIntegerField(_('قیمت (تومان)'), validators=[MinValueValidator(0)])
     discount_price = models.PositiveIntegerField(
         _('قیمت با تخفیف (تومان)'),
@@ -112,12 +144,27 @@ class Product(TimeStampedModel):
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name, allow_unicode=True)
+
+        if self._state.adding or not self.sku:
+            self.sku = generate_unique_sku()
+
         super().save(*args, **kwargs)
 
     @property
     def final_price(self):
+        if self.has_variants:
+            variant_prices = [
+                variant.final_price
+                for variant in self.variants.all()
+                if variant.is_active
+            ]
+
+            if variant_prices:
+                return min(variant_prices)
+
         if self.discount_price and self.discount_price < self.price:
             return self.discount_price
+
         return self.price
 
     @property
@@ -134,8 +181,17 @@ class Product(TimeStampedModel):
 
     @property
     def min_variant_price(self):
-        active_variants = [v for v in self.variants.all() if v.is_active]
-        prices = [v.final_price for v in active_variants]
+        active_variants = [
+            variant
+            for variant in self.variants.all()
+            if variant.is_active
+        ]
+
+        prices = [
+            variant.price
+            for variant in active_variants
+        ]
+
         return min(prices) if prices else None
 
     @property
@@ -183,7 +239,7 @@ class ProductVariant(TimeStampedModel):
         help_text=_('مثال: #FF0000'),
     )
     size = models.CharField(_('سایز / مشخصه اضافی'), max_length=50, blank=True)
-    sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True)
+    sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True, blank=True, editable=False)
     price = models.PositiveIntegerField(_('قیمت (تومان)'), validators=[MinValueValidator(0)])
     discount_price = models.PositiveIntegerField(
         _('قیمت با تخفیف (تومان)'),
@@ -218,6 +274,12 @@ class ProductVariant(TimeStampedModel):
             label = f'{label} / {self.size}'
         return f'{self.product.name} - {label}'
 
+    def save(self, *args, **kwargs):
+        if self._state.adding or not self.sku:
+            self.sku = generate_unique_sku()
+
+        super().save(*args, **kwargs)
+
     @property
     def final_price(self):
         if self.discount_price and self.discount_price < self.price:
@@ -233,6 +295,56 @@ class ProductVariant(TimeStampedModel):
         if self.weight_grams is not None:
             return self.weight_grams
         return self.product.weight_grams
+
+
+def sync_product_from_variants(product_id):
+    variants = ProductVariant.objects.filter(product_id=product_id)
+
+    # اگر آخرین Variant حذف شود، موجودی محصول صفر می‌شود
+    # تا محصول با موجودی قدیمی قابل خرید نشود.
+    if not variants.exists():
+        Product.objects.filter(pk=product_id).update(stock=0)
+        return
+
+    active_variants = variants.filter(is_active=True)
+    aggregates = active_variants.aggregate(total_stock=Sum('stock'), min_price=Min('price'))
+
+    update_data = {
+        'stock': aggregates['total_stock'] or 0,
+    }
+
+    if aggregates['min_price'] is not None:
+        update_data['price'] = aggregates['min_price']
+
+    Product.objects.filter(pk=product_id).update(**update_data)
+
+
+@receiver(pre_save, sender=ProductVariant)
+def product_variant_pre_save(sender, instance, **kwargs):
+    instance._previous_product_id = None
+
+    if instance.pk:
+        instance._previous_product_id = (
+            sender.objects
+            .filter(pk=instance.pk)
+            .values_list('product_id', flat=True)
+            .first()
+        )
+
+
+@receiver(post_save, sender=ProductVariant)
+def product_variant_post_save(sender, instance, **kwargs):
+    previous_product_id = getattr(instance, '_previous_product_id', None)
+
+    if previous_product_id and previous_product_id != instance.product_id:
+        sync_product_from_variants(previous_product_id)
+
+    sync_product_from_variants(instance.product_id)
+
+
+@receiver(post_delete, sender=ProductVariant)
+def product_variant_post_delete(sender, instance, **kwargs):
+    sync_product_from_variants(instance.product_id)
 
 
 class ProductLike(models.Model):

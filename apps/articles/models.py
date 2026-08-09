@@ -21,7 +21,7 @@ class TimeStampedModel(models.Model):
 
 class ArticleCategory(TimeStampedModel):
     name = models.CharField(_('نام دسته‌بندی'), max_length=150)
-    slug = models.SlugField(_('اسلاگ'), max_length=170, unique=True, blank=True)
+    slug = models.SlugField(_('اسلاگ'), max_length=170, unique=True, blank=True, allow_unicode=True)
     description = models.TextField(_('توضیحات'), blank=True)
     order = models.PositiveSmallIntegerField(_('ترتیب نمایش'), default=0)
     is_active = models.BooleanField(_('فعال'), default=True)
@@ -42,7 +42,7 @@ class ArticleCategory(TimeStampedModel):
 
 class Tag(models.Model):
     name = models.CharField(_('نام تگ'), max_length=60, unique=True)
-    slug = models.SlugField(_('اسلاگ'), max_length=80, unique=True, blank=True)
+    slug = models.SlugField(_('اسلاگ'), max_length=80, unique=True, blank=True, allow_unicode=True)
 
     class Meta:
         verbose_name = _('تگ')
@@ -66,7 +66,7 @@ class Article(TimeStampedModel):
         ARCHIVED = 'archived', _('بایگانی‌شده')
 
     title = models.CharField(_('عنوان'), max_length=255)
-    slug = models.SlugField(_('اسلاگ'), max_length=280, unique=True, blank=True)
+    slug = models.SlugField(_('اسلاگ'), max_length=280, unique=True, blank=True, allow_unicode=True)
     category = models.ForeignKey(
         ArticleCategory,
         verbose_name=_('دسته‌بندی'),

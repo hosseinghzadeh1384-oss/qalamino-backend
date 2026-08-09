@@ -1,36 +1,60 @@
 from django.db import transaction
 from apps.payment.models import PaymentStatus
+from apps.store.models import Product, ProductVariant
 from .models import Order
-from django.db.models import F
 
 
 @transaction.atomic
 def cancel_order_and_restore_stock(order):
     """
-    سفارش را کنسل کرده و موجودیِ آیتم‌های آن را به محصول/تنوعِ مربوطه برمی‌گرداند.
-
-    فقط روی سفارش‌های در وضعیت ``pending_payment`` عمل می‌کند؛ برای بقیه‌ی
-    وضعیت‌ها هیچ تغییری اعمال نمی‌شود (ایمن در برابر فراخوانی تکراری/همزمان).
-
-    نکته‌ی race condition: فراخوانی‌کننده باید پیش از این تابع، خودِ ``order``
-    را با ``select_for_update()`` قفل کرده باشد (همان‌طور که در OrderCancelView
-    و دستور مدیریتی cancel_stale_orders انجام می‌شود)، تا اگر همزمان کاربر در
-    حال verify کردن پرداخت است، وضعیت سفارش خراب نشود.
-
-    خروجی: True اگر سفارش واقعاً کنسل شد، False اگر سفارش از قبل در وضعیت
-    دیگری بود و کاری انجام نشد.
+    سفارش را کنسل کرده و موجودی آیتم‌های آن را
+    به محصول یا تنوع مربوطه برمی‌گرداند.
     """
+
     if order.status != Order.Status.PENDING_PAYMENT:
         return False
 
-    for item in order.items.select_related('product', 'variant'):
+    for item in order.items.select_related(
+        'product',
+        'variant',
+    ):
+        product = (
+            Product.objects
+            .select_for_update()
+            .get(pk=item.product_id)
+        )
+
         if item.variant_id:
-            item.variant.__class__.objects.filter(pk=item.variant_id).update(stock=F('stock') + item.quantity)
+            variant = (
+                ProductVariant.objects
+                .select_for_update()
+                .get(pk=item.variant_id)
+            )
+
+            variant.stock += item.quantity
+            variant.save(
+                update_fields=['stock']
+            )
+
         else:
-            item.product.__class__.objects.filter(pk=item.product_id).update(stock=F('stock') + item.quantity)
+            product.stock += item.quantity
+            product.save(
+                update_fields=['stock']
+            )
 
     order.status = Order.Status.CANCELLED
-    order.save(update_fields=['status', 'updated_at'])
-    order.payments.filter(status=PaymentStatus.PENDING).update(status=PaymentStatus.CANCELED)
+
+    order.save(
+        update_fields=[
+            'status',
+            'updated_at',
+        ]
+    )
+
+    order.payments.filter(
+        status=PaymentStatus.PENDING
+    ).update(
+        status=PaymentStatus.CANCELED
+    )
 
     return True
