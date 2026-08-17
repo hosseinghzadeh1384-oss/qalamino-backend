@@ -122,11 +122,18 @@ class GatewayRedirectView(View):
 
         action_url, fields = gw.build_redirect_form(payment)
 
-        return render(
+        response = render(
             request,
             "payment/gateway_redirect.html",
             {"action_url": action_url, "fields": fields},
         )
+
+        # درگاه سپهر برای ورود به صفحه پرداخت به Referer نیاز دارد.
+        # فقط برای همین صفحه واسط اجازه ارسال Referer به درگاه داده می‌شود
+        # و تنظیم امنیتی کل پروژه تغییر نمی‌کند.
+        response["Referrer-Policy"] = "no-referrer-when-downgrade"
+
+        return response
 
 
 @extend_schema(tags=['Payment'], request=SizpayCallbackSerializer)
