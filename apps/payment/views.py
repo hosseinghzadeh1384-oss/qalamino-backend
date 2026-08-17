@@ -213,4 +213,10 @@ class SepehrCallbackAPIView(APIView):
             return build_result_response(order_number, "failed", message=str(exc))
 
         payment_status = "success" if payment.status == "success" else "failed"
-        return build_result_response(order_number, payment_status, ref_id=payment.ref_id)
+
+        return build_result_response(
+            order_number=order_number,
+            payment_status=payment_status,
+            ref_id=payment.ref_id,
+            order_id=payment.order.id,
+        )
