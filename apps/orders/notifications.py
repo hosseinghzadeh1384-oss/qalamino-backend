@@ -23,7 +23,7 @@ def notify_order_paid(order):
     - به مشتری: با الگوی KAVENEGAR_ORDER_PAID_CUSTOMER_TEMPLATE، شامل نام گیرنده و شماره سفارش
     - به مدیر/مدیران: با الگوی KAVENEGAR_ORDER_PAID_ADMIN_TEMPLATE، شامل شماره سفارش و مبلغ سفارش
     """
-    receiver_full_name = f"{order.receiver_first_name} {order.receiver_last_name}"
+    receiver_full_name = order.receiver_first_name.strip()
     _send_lookup_sms(
         order.receiver_phone,
         settings.KAVENEGAR_ORDER_PAID_CUSTOMER_TEMPLATE,
