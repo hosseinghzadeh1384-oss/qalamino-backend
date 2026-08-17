@@ -96,9 +96,13 @@ class SepehrGateway(BasePaymentGateway):
         }
         data = self._post(self.ADVICE_URL, payload)
 
-        gateway_status = data.get("Status")
-        # طبق مستند: OK = تایید موفق تازه ، Duplicate = قبلاً هم تایید شده بود (هر دو یعنی موفق)
-        success = gateway_status in ("OK", "Duplicate")
+        gateway_status_raw = str(data.get("Status") or "").strip()
+        gateway_status = gateway_status_raw.upper()
+
+        # سپهر ممکن است Status را با بزرگی/کوچکی متفاوت حروف برگرداند.
+        # OK و Duplicate هر دو به معنی تایید موفق تراکنش هستند.
+        success = gateway_status in ("OK", "DUPLICATE")
+
         message = data.get("Message", "")
 
         if success:
@@ -115,7 +119,7 @@ class SepehrGateway(BasePaymentGateway):
 
         return {
             "success": success,
-            "code": gateway_status,
+            "code": gateway_status_raw,
             "ref_id": extra.get("rrn") or extra.get("tracenumber"),
             "card_pan": extra.get("cardnumber", ""),
             "message": message,
