@@ -37,6 +37,7 @@ def notify_order_paid(order):
             admin_phone,
             settings.KAVENEGAR_ORDER_PAID_ADMIN_TEMPLATE,
             order.order_number,
+            '',
             str(order.total_amount),
         )
 
