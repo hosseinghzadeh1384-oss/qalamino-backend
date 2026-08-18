@@ -125,6 +125,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
+
         fields = (
             'saved_address_id',
             'shipping_method_id',
@@ -138,6 +139,39 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             'customer_note',
         )
 
+        # این فیلدها در حالت استفاده از saved_address_id
+        # نباید قبل از validate اجباری باشند.
+        extra_kwargs = {
+            'receiver_first_name': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'receiver_last_name': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'receiver_phone': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'province': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'city': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'address': {
+                'required': False,
+                'allow_blank': True,
+            },
+            'postal_code': {
+                'required': False,
+                'allow_blank': True,
+            },
+        }
+
     def validate_shipping_method_id(self, value):
         try:
             shipping_method = (
@@ -148,6 +182,7 @@ class OrderCreateSerializer(serializers.ModelSerializer):
                     is_active=True,
                 )
             )
+
         except ShippingMethod.DoesNotExist:
             raise serializers.ValidationError(
                 'روش ارسال انتخاب‌شده وجود ندارد یا غیرفعال است.'
@@ -179,12 +214,15 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             None,
         )
 
+        # اگر کاربر یک آدرس ذخیره‌شده انتخاب کرده باشد،
+        # اطلاعات سفارش مستقیماً از همان آدرس برداشته می‌شود.
         if saved_address_id:
             try:
                 saved_address = SavedAddress.objects.get(
                     id=saved_address_id,
                     user=request.user,
                 )
+
             except SavedAddress.DoesNotExist:
                 raise serializers.ValidationError({
                     'saved_address_id':
@@ -194,21 +232,35 @@ class OrderCreateSerializer(serializers.ModelSerializer):
             attrs['receiver_first_name'] = (
                 saved_address.receiver_first_name
             )
+
             attrs['receiver_last_name'] = (
                 saved_address.receiver_last_name
             )
+
             attrs['receiver_phone'] = (
                 saved_address.receiver_phone
             )
-            attrs['province'] = saved_address.province
-            attrs['city'] = saved_address.city
-            attrs['address'] = saved_address.address
+
+            attrs['province'] = (
+                saved_address.province
+            )
+
+            attrs['city'] = (
+                saved_address.city
+            )
+
+            attrs['address'] = (
+                saved_address.address
+            )
+
             attrs['postal_code'] = (
                 saved_address.postal_code
             )
 
             return attrs
 
+        # اگر آدرس ذخیره‌شده انتخاب نشده باشد،
+        # اطلاعات آدرس جدید همچنان اجباری هستند.
         required_fields = (
             'receiver_first_name',
             'receiver_last_name',
@@ -248,6 +300,7 @@ class ShippingEstimateRequestSerializer(
                 id=value,
                 is_active=True,
             )
+
         except ShippingMethod.DoesNotExist:
             raise serializers.ValidationError(
                 'روش ارسال انتخاب‌شده وجود ندارد یا غیرفعال است.'
@@ -264,6 +317,7 @@ class ShippingEstimateRequestSerializer(
 class SavedAddressSerializer(serializers.ModelSerializer):
     class Meta:
         model = SavedAddress
+
         fields = (
             'id',
             'title',
