@@ -74,6 +74,7 @@ class ProductAdmin(admin.ModelAdmin):
         'name',
         'sku',
         'category',
+        'categories_list',
         'brand',
         'price',
         'weight_grams',
@@ -85,6 +86,7 @@ class ProductAdmin(admin.ModelAdmin):
     list_filter = (
         'status',
         'category',
+        'categories',
         'brand',
     )
 
@@ -103,6 +105,16 @@ class ProductAdmin(admin.ModelAdmin):
         'category',
         'brand',
     )
+
+    filter_horizontal = (
+        'categories',
+    )
+
+    @admin.display(description='دسته‌بندی‌های بیشتر')
+    def categories_list(self, obj):
+        return '، '.join(
+            obj.categories.values_list('name', flat=True)
+        ) or '-'
 
     def get_readonly_fields(self, request, obj=None):
         readonly = ['sku']
@@ -147,6 +159,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
     autocomplete_fields = (
         'product',
     )
+
 
 @admin.register(ProductLike)
 class ProductLikeAdmin(admin.ModelAdmin):

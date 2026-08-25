@@ -102,12 +102,10 @@ class Product(TimeStampedModel):
 
     name = models.CharField(_('نام محصول'), max_length=255)
     slug = models.SlugField(_('اسلاگ'), max_length=280, unique=True, blank=True, allow_unicode=True)
-    category = models.ForeignKey(
-        Category,
-        verbose_name=_('دسته‌بندی'),
-        related_name='products',
-        on_delete=models.PROTECT,
-    )
+    category = models.ForeignKey(Category, verbose_name=_('دسته‌بندی'), related_name='products',
+                                 on_delete=models.PROTECT)
+    categories = models.ManyToManyField(Category, verbose_name=_('دسته‌بندی‌های بیشتر'),
+                                        related_name='multi_category_products', blank=True)
     brand = models.ForeignKey(
         Brand,
         verbose_name=_('برند'),
