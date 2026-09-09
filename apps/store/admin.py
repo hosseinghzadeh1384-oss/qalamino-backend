@@ -52,7 +52,7 @@ class ProductVariantAdminForm(forms.ModelForm):
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
     form = ProductVariantAdminForm
-    extra = 1
+    extra = 0
     readonly_fields = ('sku',)
     fields = (
         'color_name',
