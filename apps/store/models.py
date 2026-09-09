@@ -111,7 +111,7 @@ class Product(TimeStampedModel):
                               null=True, blank=True)
     description = CKEditor5Field(_('توضیحات محصول'), config_name='extends', blank=True)
     meta_title = models.CharField(_('عنوان سئو'), max_length=255, blank=True)
-    meta_description = models.CharField(_('توضیحات سئو'), max_length=300, blank=True)
+    meta_description = models.TextField(_('توضیحات سئو'), max_length=300, blank=True)
     sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True, blank=True, editable=False)
     price = models.PositiveIntegerField(_('قیمت (تومان)'), validators=[MinValueValidator(0)])
     discount_price = models.PositiveIntegerField(
