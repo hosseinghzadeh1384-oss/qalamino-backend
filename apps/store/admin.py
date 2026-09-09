@@ -110,6 +110,54 @@ class ProductAdmin(admin.ModelAdmin):
         'categories',
     )
 
+    fieldsets = (
+        (
+            None,
+            {
+                'fields': (
+                    'name',
+                    'slug',
+                    'sku',
+                    'category',
+                    'categories',
+                    'brand',
+                    'status',
+                ),
+            },
+        ),
+        (
+            'محتوا',
+            {
+                'fields': (
+                    'description',
+                ),
+            },
+        ),
+        (
+            'قیمت و موجودی',
+            {
+                'fields': (
+                    'price',
+                    'discount_price',
+                    'stock',
+                    'weight_grams',
+                ),
+            },
+        ),
+        (
+            'سئو',
+            {
+                'fields': (
+                    'meta_title',
+                    'meta_description',
+                ),
+                'classes': (
+                    'collapse',
+                ),
+            },
+        ),
+    )
+
     @admin.display(description='دسته‌بندی‌های بیشتر')
     def categories_list(self, obj):
         return '، '.join(

@@ -6,6 +6,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
+from django_ckeditor_5.fields import CKEditor5Field
 
 
 class TimeStampedModel(models.Model):
@@ -106,15 +107,11 @@ class Product(TimeStampedModel):
                                  on_delete=models.PROTECT)
     categories = models.ManyToManyField(Category, verbose_name=_('دسته‌بندی‌های بیشتر'),
                                         related_name='multi_category_products', blank=True)
-    brand = models.ForeignKey(
-        Brand,
-        verbose_name=_('برند'),
-        related_name='products',
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-    )
-    description = models.TextField(_('توضیحات'), blank=True)
+    brand = models.ForeignKey(Brand, verbose_name=_('برند'), related_name='products', on_delete=models.PROTECT,
+                              null=True, blank=True)
+    description = CKEditor5Field(_('توضیحات محصول'), config_name='extends', blank=True)
+    meta_title = models.CharField(_('عنوان سئو'), max_length=255, blank=True)
+    meta_description = models.CharField(_('توضیحات سئو'), max_length=300, blank=True)
     sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True, blank=True, editable=False)
     price = models.PositiveIntegerField(_('قیمت (تومان)'), validators=[MinValueValidator(0)])
     discount_price = models.PositiveIntegerField(
