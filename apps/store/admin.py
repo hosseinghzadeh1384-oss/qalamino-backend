@@ -151,9 +151,6 @@ class ProductAdmin(admin.ModelAdmin):
                     'meta_title',
                     'meta_description',
                 ),
-                'classes': (
-                    'collapse',
-                ),
             },
         ),
     )
