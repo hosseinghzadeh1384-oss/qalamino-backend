@@ -243,7 +243,7 @@ class ProductVariant(TimeStampedModel):
         related_name='variants',
         on_delete=models.CASCADE,
     )
-    color_name = models.CharField(_('نام رنگ'), max_length=50, blank=True)
+    color_name = models.CharField(_('نام رنگ'), max_length=50, blank=True, null=True)
     color_code = models.CharField(_('کد رنگ (Hex)'), max_length=7, blank=True, help_text=_('مثال: #FF0000'))
     design_name = models.CharField(_('نام طرح'), max_length=50, blank=True)
     sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True, blank=True, editable=False)
