@@ -227,13 +227,8 @@ class ProductVariant(TimeStampedModel):
         on_delete=models.CASCADE,
     )
     color_name = models.CharField(_('نام رنگ'), max_length=50, blank=True)
-    color_code = models.CharField(
-        _('کد رنگ (Hex)'),
-        max_length=7,
-        blank=True,
-        help_text=_('مثال: #FF0000'),
-    )
-    size = models.CharField(_('سایز / مشخصه اضافی'), max_length=50, blank=True)
+    color_code = models.CharField(_('کد رنگ (Hex)'), max_length=7, blank=True, help_text=_('مثال: #FF0000'))
+    design_name = models.CharField(_('نام طرح'), max_length=50, blank=True)
     sku = models.CharField(_('کد کالا (SKU)'), max_length=64, unique=True, blank=True, editable=False)
     price = models.PositiveIntegerField(_('قیمت (تومان)'), validators=[MinValueValidator(0)])
     discount_price = models.PositiveIntegerField(
@@ -255,19 +250,40 @@ class ProductVariant(TimeStampedModel):
     class Meta:
         verbose_name = _('تنوع محصول')
         verbose_name_plural = _('تنوع‌های محصول')
-        ordering = ['color_name', 'size']
+        ordering = [
+            'color_name',
+            'design_name',
+        ]
         constraints = [
-            models.UniqueConstraint(fields=['product', 'color_name', 'size'], name='unique_product_color_size'),
+            models.UniqueConstraint(
+                fields=[
+                    'product',
+                    'color_name',
+                    'design_name',
+                ],
+                name='unique_product_color_design')
         ]
         indexes = [
             models.Index(fields=['product', 'color_name']),
         ]
 
+    @property
+    def display_name(self):
+        parts = []
+
+        if self.color_name:
+            parts.append(self.color_name.strip())
+
+        if self.design_name:
+            parts.append(self.design_name.strip())
+
+        if parts:
+            return ' / '.join(parts)
+
+        return 'تنوع محصول'
+
     def __str__(self):
-        label = self.color_name
-        if self.size:
-            label = f'{label} / {self.size}'
-        return f'{self.product.name} - {label}'
+        return f'{self.product.name} - {self.display_name}'
 
     def save(self, *args, **kwargs):
         if self._state.adding or not self.sku:

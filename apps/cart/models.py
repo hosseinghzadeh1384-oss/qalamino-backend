@@ -83,7 +83,7 @@ class CartItem(models.Model):
     def __str__(self):
         label = self.product.name
         if self.variant_id:
-            label += f' ({self.variant.color_name})'
+            label += f' ({self.variant.display_name})'
         return f'{label} x {self.quantity}'
 
     @property

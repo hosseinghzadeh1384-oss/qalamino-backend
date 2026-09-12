@@ -30,14 +30,27 @@ class ProductVariantSerializer(serializers.ModelSerializer):
     final_price = serializers.IntegerField(read_only=True)
     is_available = serializers.BooleanField(read_only=True)
     effective_weight_grams = serializers.IntegerField(read_only=True)
+    display_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = ProductVariant
+
         fields = (
-            'id', 'color_name', 'color_code', 'size', 'sku',
-            'price', 'discount_price', 'final_price', 'stock',
-            'weight_grams', 'effective_weight_grams',
-            'image', 'is_active', 'is_available',
+            'id',
+            'color_name',
+            'color_code',
+            'design_name',
+            'display_name',
+            'sku',
+            'price',
+            'discount_price',
+            'final_price',
+            'stock',
+            'weight_grams',
+            'effective_weight_grams',
+            'image',
+            'is_active',
+            'is_available',
         )
 
 
@@ -127,7 +140,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = (
-            'id', 'name', 'slug', 'category', 'brand', 'description', 'sku','meta_title', 'meta_description',
+            'id', 'name', 'slug', 'category', 'brand', 'description', 'sku', 'meta_title', 'meta_description',
             'price', 'discount_price', 'final_price', 'stock', 'status',
             'weight_grams', 'images', 'variants', 'has_variants', 'is_available', 'created_at',
             'likes_count', 'average_rating', 'ratings_count', 'comments_count',

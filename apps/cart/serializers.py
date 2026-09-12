@@ -36,13 +36,15 @@ class CartItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'variant_id': ['این تنوع متعلق به این محصول نیست.']})
 
         if product and product.has_variants and not variant:
-            raise serializers.ValidationError({'variant_id': ['برای این محصول باید یک تنوع (مثلاً رنگ) انتخاب کنید.']})
+            raise serializers.ValidationError(
+                {'variant_id': ['برای این محصول باید یک تنوع (مثلاً رنگ یا طرح) انتخاب کنید.']})
 
         if variant:
             if not variant.is_available:
                 raise serializers.ValidationError('این تنوع از محصول در حال حاضر موجود نیست.')
             if quantity > variant.stock:
-                raise serializers.ValidationError(f'موجودی کافی نیست. حداکثر {variant.stock} عدد از این تنوع موجود است.')
+                raise serializers.ValidationError(
+                    f'موجودی کافی نیست. حداکثر {variant.stock} عدد از این تنوع موجود است.')
         elif product:
             if not product.is_available:
                 raise serializers.ValidationError('این محصول در حال حاضر موجود نیست.')

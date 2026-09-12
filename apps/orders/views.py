@@ -108,7 +108,7 @@ class OrderCreateView(APIView):
 
             if cart_item.variant_id:
                 variant = ProductVariant.objects.select_for_update().get(id=cart_item.variant_id)
-                variant_label = variant.color_name + (f' / {variant.size}' if variant.size else '')
+                variant_label = variant.display_name
 
                 if not variant.is_active or variant.stock < cart_item.quantity:
                     raise ValidationError(f'موجودی «{product.name} - {variant_label}» کافی نیست.')

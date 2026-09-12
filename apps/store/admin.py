@@ -48,6 +48,12 @@ class ProductVariantAdminForm(forms.ModelForm):
             ),
         }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['color_name'].required = False
+        self.fields['color_code'].required = False
+        self.fields['design_name'].required = False
+
 
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
@@ -57,7 +63,7 @@ class ProductVariantInline(admin.TabularInline):
     fields = (
         'color_name',
         'color_code',
-        'size',
+        'design_name',
         'sku',
         'price',
         'discount_price',
@@ -182,7 +188,7 @@ class ProductVariantAdmin(admin.ModelAdmin):
         'product',
         'sku',
         'color_name',
-        'size',
+        'design_name',
         'price',
         'discount_price',
         'stock',
@@ -193,12 +199,14 @@ class ProductVariantAdmin(admin.ModelAdmin):
     list_filter = (
         'is_active',
         'color_name',
+        'design_name',
     )
 
     search_fields = (
         'product__name',
         'sku',
         'color_name',
+        'design_name',
     )
 
     autocomplete_fields = (
