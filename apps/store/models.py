@@ -327,16 +327,21 @@ class ProductVariant(TimeStampedModel):
                     'design_name': 'این محصول فقط تنوع رنگ دارد و نباید نام طرح داشته باشد.'
                 })
 
+
         elif variant_type == Product.VariantType.DESIGN:
             if not design_name:
                 raise ValidationError({
+
                     'design_name': 'برای محصول با تنوع طرح، نام طرح الزامی است.'
+
                 })
 
-            if color_name or color_code:
-                raise ValidationError(
-                    'این محصول فقط تنوع طرح دارد و نباید اطلاعات رنگ داشته باشد.'
-                )
+            if color_name:
+                raise ValidationError({
+
+                    'color_name': 'برای تنوع طرح نیازی به وارد کردن نام رنگ نیست.'
+
+                })
 
         elif variant_type == Product.VariantType.COLOR_DESIGN:
             if not color_name:
