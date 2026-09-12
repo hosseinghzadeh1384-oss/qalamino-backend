@@ -82,6 +82,7 @@ class ProductAdmin(admin.ModelAdmin):
         'category',
         'categories_list',
         'brand',
+        'variant_type',
         'price',
         'weight_grams',
         'discount_price',
@@ -91,6 +92,7 @@ class ProductAdmin(admin.ModelAdmin):
 
     list_filter = (
         'status',
+        'variant_type',
         'category',
         'categories',
         'brand',
@@ -127,6 +129,7 @@ class ProductAdmin(admin.ModelAdmin):
                     'category',
                     'categories',
                     'brand',
+                    'variant_type',
                     'status',
                 ),
             },

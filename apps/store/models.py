@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django_ckeditor_5.fields import CKEditor5Field
+from django.core.exceptions import ValidationError
 
 
 class TimeStampedModel(models.Model):
@@ -101,6 +102,12 @@ class Product(TimeStampedModel):
         PUBLISHED = 'published', _('منتشرشده')
         ARCHIVED = 'archived', _('بایگانی‌شده')
 
+    class VariantType(models.TextChoices):
+        NONE = 'none', _('بدون تنوع')
+        COLOR = 'color', _('رنگ')
+        DESIGN = 'design', _('طرح')
+        COLOR_DESIGN = 'color_design', _('رنگ و طرح')
+
     name = models.CharField(_('نام محصول'), max_length=255)
     slug = models.SlugField(_('اسلاگ'), max_length=280, unique=True, blank=True, allow_unicode=True)
     category = models.ForeignKey(Category, verbose_name=_('دسته‌بندی'), related_name='products',
@@ -122,6 +129,16 @@ class Product(TimeStampedModel):
     )
     stock = models.PositiveIntegerField(_('موجودی انبار'), default=0, validators=[MinValueValidator(0)])
     status = models.CharField(_('وضعیت'), max_length=20, choices=Status.choices, default=Status.PUBLISHED)
+    variant_type = models.CharField(
+        _('نوع تنوع'),
+        max_length=20,
+        choices=VariantType.choices,
+        default=VariantType.NONE,
+        help_text=_(
+            'اگر محصول تنوع ندارد «بدون تنوع» را انتخاب کنید. '
+            'برای محصولاتی مثل خودکار رنگ و برای محصولاتی مثل دفتر با جلدهای مختلف طرح را انتخاب کنید.'
+        ),
+    )
     weight_grams = models.PositiveIntegerField(_('وزن (گرم)'), null=True, blank=True)
 
     class Meta:
@@ -281,6 +298,56 @@ class ProductVariant(TimeStampedModel):
             return ' / '.join(parts)
 
         return 'تنوع محصول'
+
+    def clean(self):
+        super().clean()
+
+        if not self.product_id:
+            return
+
+        variant_type = self.product.variant_type
+
+        color_name = (self.color_name or '').strip()
+        color_code = (self.color_code or '').strip()
+        design_name = (self.design_name or '').strip()
+
+        if variant_type == Product.VariantType.NONE:
+            raise ValidationError({
+                'product': 'این محصول روی حالت «بدون تنوع» قرار دارد.'
+            })
+
+        if variant_type == Product.VariantType.COLOR:
+            if not color_name:
+                raise ValidationError({
+                    'color_name': 'برای محصول با تنوع رنگ، نام رنگ الزامی است.'
+                })
+
+            if design_name:
+                raise ValidationError({
+                    'design_name': 'این محصول فقط تنوع رنگ دارد و نباید نام طرح داشته باشد.'
+                })
+
+        elif variant_type == Product.VariantType.DESIGN:
+            if not design_name:
+                raise ValidationError({
+                    'design_name': 'برای محصول با تنوع طرح، نام طرح الزامی است.'
+                })
+
+            if color_name or color_code:
+                raise ValidationError(
+                    'این محصول فقط تنوع طرح دارد و نباید اطلاعات رنگ داشته باشد.'
+                )
+
+        elif variant_type == Product.VariantType.COLOR_DESIGN:
+            if not color_name:
+                raise ValidationError({
+                    'color_name': 'نام رنگ الزامی است.'
+                })
+
+            if not design_name:
+                raise ValidationError({
+                    'design_name': 'نام طرح الزامی است.'
+                })
 
     def __str__(self):
         return f'{self.product.name} - {self.display_name}'
